@@ -1,0 +1,494 @@
+import React, { useState, useEffect } from 'react';
+import { BookOpen, User, Brain, Hammer, Heart, Activity, CheckCircle, Star, ArrowRight, RefreshCw, Briefcase, PlusCircle, Save } from 'lucide-react';
+
+// --- 데이터 및 상수 ---
+
+const JOB_DATA = {
+  barista: {
+    id: 'barista',
+    title: '바리스타',
+    icon: '☕',
+    description: '맛있는 커피를 만들고 손님에게 최상의 서비스를 제공하는 직업입니다.',
+    interest: '뚝딱이 유형, 친절이 유형',
+    aptitude: '인간관계 영역, 언어 활용 영역',
+    tasks: [
+      '커피콩과 장비를 위생적으로 관리하기',
+      '커피 추출과 관련된 일 하기',
+      '손님을 친절하게 응대하기'
+    ],
+    abilities: {
+      physical: '기초 체력과 균형 감각이 좋아야 합니다.',
+      psychological: '손님을 대할 때 친절한 마음과 태도를 가져야 합니다.',
+      functional: '커피 추출과 관련된 일을 할 줄 알아야 합니다.'
+    }
+  },
+  caregiver: {
+    id: 'caregiver',
+    title: '요양보호사',
+    icon: '🦽',
+    description: '몸이 불편한 분들의 신체 활동과 가사 활동을 돕는 고마운 직업입니다.',
+    interest: '친절이 유형',
+    aptitude: '인간관계 영역',
+    tasks: [
+      '몸이 불편한 사람의 신체 활동 지원하기',
+      '몸이 불편한 사람의 집안일 돕기',
+      '대상자의 건강 상태 살피기'
+    ],
+    abilities: {
+      physical: '사람을 부축할 수 있는 기초 체력과 근력이 좋아야 합니다.',
+      psychological: '배려심 깊고 친절한 마음을 가져야 합니다.',
+      functional: '신체 지원 활동 기술(보장구 사용 등)이 있어야 합니다.'
+    }
+  }
+};
+
+const QUIZ_DATA = [
+  { question: "무거운 커피 머신을 다루거나 오랫동안 서서 일하려면?", answer: "physical", options: ["신체적 능력", "심리적 능력", "기능적 능력"] },
+  { question: "손님이 화를 내도 침착하고 친절하게 대하려면?", answer: "psychological", options: ["신체적 능력", "심리적 능력", "기능적 능력"] },
+  { question: "맛있는 커피를 내리는 정확한 방법을 알기 위해서는?", answer: "functional", options: ["신체적 능력", "심리적 능력", "기능적 능력"] },
+  { question: "몸이 불편한 어르신을 휠체어로 옮겨 드리려면?", answer: "functional", options: ["신체적 능력", "심리적 능력", "기능적 능력"] }, // 기술적인 측면 (요령)
+  { question: "어르신의 말벗이 되어 드리고 공감하려면?", answer: "psychological", options: ["신체적 능력", "심리적 능력", "기능적 능력"] },
+];
+
+// --- 컴포넌트 ---
+
+const TabButton = ({ active, onClick, icon: Icon, label }) => (
+  <button
+    onClick={onClick}
+    className={`flex items-center gap-2 px-4 py-3 rounded-t-lg font-bold transition-colors duration-200 ${
+      active
+        ? 'bg-white text-blue-600 border-t-4 border-blue-500 shadow-sm'
+        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+    }`}
+  >
+    <Icon size={20} />
+    <span className="hidden sm:inline">{label}</span>
+  </button>
+);
+
+const AbilityCard = ({ title, content, type, icon: Icon, color }) => (
+  <div className={`p-4 rounded-xl border-2 ${color} bg-white shadow-sm hover:shadow-md transition-all duration-300 transform hover:-translate-y-1`}>
+    <div className="flex items-center gap-2 mb-2">
+      <div className={`p-2 rounded-full ${color.replace('border-', 'bg-').replace('-200', '-100')} text-gray-700`}>
+        <Icon size={20} />
+      </div>
+      <h4 className="font-bold text-lg text-gray-800">{title}</h4>
+    </div>
+    <p className="text-gray-600 leading-relaxed word-keep break-words">{content}</p>
+  </div>
+);
+
+const JobDetailView = ({ job }) => {
+  return (
+    <div className="animate-fade-in space-y-6">
+      <div className="bg-blue-50 p-6 rounded-2xl flex flex-col sm:flex-row items-center gap-6 border border-blue-100">
+        <div className="text-6xl bg-white p-4 rounded-full shadow-md animate-bounce-slow">{job.icon}</div>
+        <div className="text-center sm:text-left">
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">{job.title}</h2>
+          <p className="text-gray-600 mb-4">{job.description}</p>
+          <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+            <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold flex items-center gap-1">
+              <Star size={14} /> 흥미: {job.interest}
+            </span>
+            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-semibold flex items-center gap-1">
+              <Brain size={14} /> 적성: {job.aptitude}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+        <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <Briefcase className="text-blue-500" /> 하는 일
+        </h3>
+        <ul className="space-y-2">
+          {job.tasks.map((task, idx) => (
+            <li key={idx} className="flex items-start gap-2 text-gray-700">
+              <CheckCircle size={18} className="text-green-500 mt-1 shrink-0" />
+              <span>{task}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <AbilityCard
+          title="신체적 능력"
+          content={job.abilities.physical}
+          type="physical"
+          icon={Activity}
+          color="border-red-200 bg-red-50"
+        />
+        <AbilityCard
+          title="심리적 능력"
+          content={job.abilities.psychological}
+          type="psychological"
+          icon={Heart}
+          color="border-pink-200 bg-pink-50"
+        />
+        <AbilityCard
+          title="기능적 능력"
+          content={job.abilities.functional}
+          type="functional"
+          icon={Hammer}
+          color="border-indigo-200 bg-indigo-50"
+        />
+      </div>
+    </div>
+  );
+};
+
+const QuizSection = () => {
+  const [currentQ, setCurrentQ] = useState(0);
+  const [score, setScore] = useState(0);
+  const [showResult, setShowResult] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+
+  const handleAnswer = (selectedType) => {
+    const isCorrect = (selectedType === "신체적 능력" && QUIZ_DATA[currentQ].answer === 'physical') ||
+                      (selectedType === "심리적 능력" && QUIZ_DATA[currentQ].answer === 'psychological') ||
+                      (selectedType === "기능적 능력" && QUIZ_DATA[currentQ].answer === 'functional');
+
+    if (isCorrect) {
+      setScore(score + 1);
+      setFeedback("correct");
+    } else {
+      setFeedback("wrong");
+    }
+
+    setTimeout(() => {
+      setFeedback(null);
+      if (currentQ < QUIZ_DATA.length - 1) {
+        setCurrentQ(currentQ + 1);
+      } else {
+        setShowResult(true);
+      }
+    }, 1000);
+  };
+
+  const resetQuiz = () => {
+    setCurrentQ(0);
+    setScore(0);
+    setShowResult(false);
+  };
+
+  if (showResult) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 bg-white rounded-2xl shadow-lg border border-gray-100 text-center animate-fade-in">
+        <div className="text-6xl mb-4">🎉</div>
+        <h2 className="text-2xl font-bold text-gray-800 mb-2">퀴즈 완료!</h2>
+        <p className="text-lg text-gray-600 mb-6">
+          총 {QUIZ_DATA.length}문제 중 <span className="text-blue-600 font-bold text-xl">{score}</span>문제를 맞혔어요!
+        </p>
+        <button
+          onClick={resetQuiz}
+          className="flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-bold shadow-md"
+        >
+          <RefreshCw size={20} /> 다시 도전하기
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+        <div className="bg-blue-600 p-4 text-white flex justify-between items-center">
+          <span className="font-bold text-lg">능력 분류 퀴즈</span>
+          <span className="bg-blue-500 px-3 py-1 rounded-full text-sm">
+            {currentQ + 1} / {QUIZ_DATA.length}
+          </span>
+        </div>
+        
+        <div className="p-8 text-center">
+          <div className="mb-8 min-h-[80px] flex items-center justify-center">
+            <h3 className="text-xl md:text-2xl font-bold text-gray-800 word-keep">
+              {QUIZ_DATA[currentQ].question}
+            </h3>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3">
+            {QUIZ_DATA[currentQ].options.map((option, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleAnswer(option)}
+                disabled={feedback !== null}
+                className={`p-4 rounded-xl font-bold text-lg transition-all duration-200 border-2
+                  ${feedback === null 
+                    ? 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600' 
+                    : ''}
+                  ${feedback === 'correct' && ((option === "신체적 능력" && QUIZ_DATA[currentQ].answer === 'physical') || (option === "심리적 능력" && QUIZ_DATA[currentQ].answer === 'psychological') || (option === "기능적 능력" && QUIZ_DATA[currentQ].answer === 'functional'))
+                    ? 'bg-green-100 border-green-500 text-green-700'
+                    : ''}
+                  ${feedback === 'wrong' && !((option === "신체적 능력" && QUIZ_DATA[currentQ].answer === 'physical') || (option === "심리적 능력" && QUIZ_DATA[currentQ].answer === 'psychological') || (option === "기능적 능력" && QUIZ_DATA[currentQ].answer === 'functional'))
+                    ? 'opacity-50' 
+                    : ''}
+                `}
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+          
+          <div className={`mt-4 h-6 text-lg font-bold transition-opacity duration-300 ${feedback ? 'opacity-100' : 'opacity-0'}`}>
+            {feedback === 'correct' && <span className="text-green-500">정답입니다! 👏</span>}
+            {feedback === 'wrong' && <span className="text-red-500">아쉬워요, 다시 생각해볼까요? 🤔</span>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MyJobBuilder = () => {
+  const [jobName, setJobName] = useState('');
+  const [tasks, setTasks] = useState(['', '', '']);
+  const [abilities, setAbilities] = useState({
+    physical: '',
+    psychological: '',
+    functional: ''
+  });
+  const [saved, setSaved] = useState(false);
+
+  const handleTaskChange = (index, value) => {
+    const newTasks = [...tasks];
+    newTasks[index] = value;
+    setTasks(newTasks);
+  };
+
+  const handleAbilityChange = (type, value) => {
+    setAbilities({ ...abilities, [type]: value });
+  };
+
+  const handleSave = () => {
+    if (!jobName.trim()) {
+      alert("직업 이름을 입력해주세요!");
+      return;
+    }
+    setSaved(true);
+  };
+
+  const handleReset = () => {
+    setJobName('');
+    setTasks(['', '', '']);
+    setAbilities({ physical: '', psychological: '', functional: '' });
+    setSaved(false);
+  };
+
+  if (saved) {
+    return (
+      <div className="animate-fade-in">
+        <div className="bg-white p-8 rounded-2xl shadow-xl border-4 border-yellow-300 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-100 rounded-bl-full -mr-16 -mt-16 z-0"></div>
+          
+          <div className="relative z-10">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-bold mb-2 inline-block">나의 꿈 카드</span>
+                <h2 className="text-3xl font-bold text-gray-800">{jobName}</h2>
+              </div>
+              <div className="text-5xl">✨</div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-blue-50 p-4 rounded-xl">
+                <h3 className="font-bold text-blue-800 mb-2 flex items-center gap-2"><Briefcase size={18}/> 하는 일</h3>
+                <ul className="list-disc list-inside text-gray-700 space-y-1">
+                  {tasks.map((task, idx) => task && <li key={idx}>{task}</li>)}
+                </ul>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-red-50 p-4 rounded-xl border border-red-100">
+                  <h4 className="font-bold text-red-800 mb-2 flex items-center gap-2"><Activity size={16}/> 신체적 능력</h4>
+                  <p className="text-sm text-gray-700">{abilities.physical || "입력되지 않음"}</p>
+                </div>
+                <div className="bg-pink-50 p-4 rounded-xl border border-pink-100">
+                  <h4 className="font-bold text-pink-800 mb-2 flex items-center gap-2"><Heart size={16}/> 심리적 능력</h4>
+                  <p className="text-sm text-gray-700">{abilities.psychological || "입력되지 않음"}</p>
+                </div>
+                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                  <h4 className="font-bold text-indigo-800 mb-2 flex items-center gap-2"><Hammer size={16}/> 기능적 능력</h4>
+                  <p className="text-sm text-gray-700">{abilities.functional || "입력되지 않음"}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 text-center">
+              <button onClick={handleReset} className="text-gray-500 hover:text-blue-600 underline">새로 만들기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
+      <div className="bg-blue-50 p-6 rounded-xl border-l-4 border-blue-500">
+        <h3 className="font-bold text-lg text-blue-900 mb-2">나만의 직업 분석하기</h3>
+        <p className="text-blue-800">
+          내가 희망하는 직업을 정하고 필요한 능력들을 적어보세요.
+        </p>
+      </div>
+
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 space-y-6">
+        <div>
+          <label className="block text-gray-700 font-bold mb-2">희망하는 직업 이름</label>
+          <input
+            type="text"
+            value={jobName}
+            onChange={(e) => setJobName(e.target.value)}
+            placeholder="예: 제과제빵사, 프로게이머, 수의사..."
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+          />
+        </div>
+
+        <div>
+          <label className="block text-gray-700 font-bold mb-2">주요 업무 (하는 일)</label>
+          <div className="space-y-2">
+            {tasks.map((task, idx) => (
+              <input
+                key={idx}
+                type="text"
+                value={task}
+                onChange={(e) => handleTaskChange(idx, e.target.value)}
+                placeholder={`${idx + 1}. 이 직업은 어떤 일을 하나요?`}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <label className="block text-gray-700 font-bold mb-2 flex items-center gap-1">
+              <Activity size={16} className="text-red-500"/> 신체적 능력
+            </label>
+            <textarea
+              value={abilities.physical}
+              onChange={(e) => handleAbilityChange('physical', e.target.value)}
+              placeholder="예: 체력, 근력, 균형감각..."
+              className="w-full p-3 border border-gray-300 rounded-lg h-32 resize-none focus:ring-2 focus:ring-red-200 outline-none text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-gray-700 font-bold mb-2 flex items-center gap-1">
+              <Heart size={16} className="text-pink-500"/> 심리적 능력
+            </label>
+            <textarea
+              value={abilities.psychological}
+              onChange={(e) => handleAbilityChange('psychological', e.target.value)}
+              placeholder="예: 친절함, 인내심, 꼼꼼함..."
+              className="w-full p-3 border border-gray-300 rounded-lg h-32 resize-none focus:ring-2 focus:ring-pink-200 outline-none text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-gray-700 font-bold mb-2 flex items-center gap-1">
+              <Hammer size={16} className="text-indigo-500"/> 기능적 능력
+            </label>
+            <textarea
+              value={abilities.functional}
+              onChange={(e) => handleAbilityChange('functional', e.target.value)}
+              placeholder="예: 기계 조작법, 계산 능력..."
+              className="w-full p-3 border border-gray-300 rounded-lg h-32 resize-none focus:ring-2 focus:ring-indigo-200 outline-none text-sm"
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={handleSave}
+          className="w-full py-4 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl shadow-md transition-colors flex justify-center items-center gap-2"
+        >
+          <Save size={20} /> 저장하고 카드 만들기
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// --- 메인 앱 ---
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState('barista'); // barista, caregiver, quiz, myjob
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 pb-12">
+      {/* 헤더 */}
+      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BookOpen className="text-blue-600" size={24} />
+            <h1 className="text-xl md:text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+              직업 능력 탐험대
+            </h1>
+          </div>
+          <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">진로와 직업 10단원</span>
+        </div>
+      </header>
+
+      {/* 메인 컨텐츠 영역 */}
+      <main className="max-w-4xl mx-auto px-4 mt-8">
+        
+        {/* 네비게이션 탭 */}
+        <div className="flex space-x-1 overflow-x-auto border-b border-gray-200 mb-8 scrollbar-hide">
+          <TabButton 
+            active={activeTab === 'barista'} 
+            onClick={() => setActiveTab('barista')} 
+            icon={Activity} 
+            label="바리스타 탐구" 
+          />
+          <TabButton 
+            active={activeTab === 'caregiver'} 
+            onClick={() => setActiveTab('caregiver')} 
+            icon={Heart} 
+            label="요양보호사 탐구" 
+          />
+          <TabButton 
+            active={activeTab === 'quiz'} 
+            onClick={() => setActiveTab('quiz')} 
+            icon={CheckCircle} 
+            label="능력 분류 퀴즈" 
+          />
+          <TabButton 
+            active={activeTab === 'myjob'} 
+            onClick={() => setActiveTab('myjob')} 
+            icon={User} 
+            label="나의 꿈 찾기" 
+          />
+        </div>
+
+        {/* 탭 컨텐츠 */}
+        <div className="min-h-[500px]">
+          {activeTab === 'barista' && <JobDetailView job={JOB_DATA.barista} />}
+          {activeTab === 'caregiver' && <JobDetailView job={JOB_DATA.caregiver} />}
+          {activeTab === 'quiz' && <QuizSection />}
+          {activeTab === 'myjob' && <MyJobBuilder />}
+        </div>
+
+      </main>
+
+      <footer className="mt-12 text-center text-gray-400 text-sm p-4">
+        <p>10단원 직업 능력</p>
+      </footer>
+
+      {/* 스타일 애니메이션 (인라인) */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes bounceSlow {
+          0%, 100% { transform: translateY(-5%); }
+          50% { transform: translateY(5%); }
+        }
+        .animate-bounce-slow {
+          animation: bounceSlow 3s infinite ease-in-out;
+        }
+      `}</style>
+    </div>
+  );
+}
